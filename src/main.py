@@ -1,5 +1,6 @@
 import network
 import time
+import urequests
 import utime
 from machine import Pin
 
@@ -36,10 +37,31 @@ def connect_wlan():
         print(f'Connected to network with IP: {ip_address[0]}')
         led_pin.value(1)
 
+def send_button_press_event(button_id):
+    # TODO: send to LifeLog endpoint when that's up and running
+    response = urequests.post(
+        'https://wx.hakkslab.io/observation',
+        headers={
+            'Content-Type': 'text/json',
+        },
+        data='{"stationKey":"LBTN", "stationName": "LifeButton", "observationType": "temperature", "observationValue": 42}'
+    )
+    print('Send press event')
+    response.close()
+
 def handle_button_press(pin):
     pin.irq(handler=None)
-    utime.sleep_ms(200)
-    print(f'Received a button press from {pin}')
+
+    # loop through the buttons to find the one that raised the interrupt
+    for key in button_pin_map:
+        value = button_pin_map[key]
+        index, button = value
+        if pin is button:
+            print(f'Sending event for button #{index}')
+            send_button_press_event(index)
+            time.sleep(1)
+            break
+
     pin.irq(handler=handle_button_press, trigger=Pin.IRQ_FALLING)
 
 
