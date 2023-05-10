@@ -1,5 +1,6 @@
 import network
 import time
+import utime
 from machine import Pin
 
 # TODO figure out how to move this to some imported config...
@@ -36,7 +37,11 @@ def connect_wlan():
         led_pin.value(1)
 
 def handle_button_press(pin):
-    print(f'Got a press on {pin}')
+    pin.irq(handler=None)
+    utime.sleep_ms(200)
+    print(f'Received a button press from {pin}')
+    pin.irq(handler=handle_button_press, trigger=Pin.IRQ_FALLING)
+
 
 def init_buttons():
     i = 0
@@ -51,5 +56,7 @@ def init_buttons():
 def main():
     init_buttons()
     connect_wlan()
+    while True:
+        pass
 
 main()
