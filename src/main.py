@@ -1,7 +1,8 @@
 import network
 import time
-import urequests
 import utime
+import urequests
+import ujson
 from machine import Pin
 
 from config import NETWORK_PASS, NETWORK_SSID
@@ -38,24 +39,26 @@ def connect_wlan():
 
 def send_button_press_event(button_id):
     # TODO: send to LifeLog endpoint when that's up and running
-    # response = urequests.post(
-    #     'https://wx.hakkslab.io/observation',
-    #     headers={
-    #         'Content-Type': 'text/json',
-    #     },
-    #     data='{"stationKey":"LBTN", "stationName": "LifeButton", "observationType": "temperature", "observationValue": 42}'
-    # )
     print(f'Send press event for button {button_id}')
-    led_pin.toggle()
-    utime.sleep_ms(200)
-    led_pin.toggle()
-    # response.close()
+    response = urequests.post(
+        'https://wx.hakkslab.io/observation',
+        headers={
+            'Content-Type': 'application/json',
+        },
+        data=ujson.dumps({
+            'stationKey': 'LBTN',
+            'stationName': 'LifeButton',
+            'observationType': 'temperature',
+            'observationValue': button_id,
+        })
+    )
+    response.close()
 
 def handle_button_press(pin):
     # loop through the buttons to find the one that raised the interrupt
     for button in buttons:
         if button.handle_interrupt(pin):
-            send_button_press_event(button.button_id)
+            print(f'Button press on {button.button_id}')
             break
 
 def init_buttons():
@@ -70,6 +73,9 @@ def main():
     connect_wlan()
     init_buttons()
     while True:
-        pass
+        for button in buttons:
+            button.handle_tick(utime.ticks_ms())
+            if button.should_send_event():
+                send_button_press_event(button.button_id)
 
 main()
