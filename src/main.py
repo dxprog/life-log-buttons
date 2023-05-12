@@ -5,6 +5,7 @@ import utime
 from machine import Pin
 
 from config import NETWORK_PASS, NETWORK_SSID
+from button import Button
 
 led_pin = Pin("LED", Pin.OUT)
 
@@ -50,35 +51,19 @@ def send_button_press_event(button_id):
     led_pin.toggle()
     # response.close()
 
-class Button:
-    def __init__(self, pin_id, button_id):
-        self.pin = Pin(pin_id, Pin.IN, Pin.PULL_UP)
-        self.pin.irq(handler=handle_button_press, trigger=Pin.IRQ_RISING)
-        self.button_id = button_id
-        self.debounce_time = 0
-
-        print(f'Button {button_id} created on pin {pin_id}')
-
-    def handle_interrupt(self, pin):
-        if pin is self.pin and utime.ticks_ms() > self.debounce_time:
-            self.debounce_time = utime.ticks_ms() + 2000
-            send_button_press_event(self.button_id)
-            return True
-        return False
-
 def handle_button_press(pin):
     # loop through the buttons to find the one that raised the interrupt
     for button in buttons:
         if button.handle_interrupt(pin):
+            send_button_press_event(button.button_id)
             break
-
 
 def init_buttons():
     global button_pins
 
     i = 0
     for pin_id in button_pins:
-        buttons.append(Button(pin_id, i))
+        buttons.append(Button(pin_id, i, irq_handler=handle_button_press))
         i += 1
 
 def main():
