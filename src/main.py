@@ -4,9 +4,7 @@ import urequests
 import utime
 from machine import Pin
 
-# TODO figure out how to move this to some imported config...
-NETWORK_SSID="__SSID__"
-NETWORK_PASS="__PASS__"
+from config import NETWORK_PASS, NETWORK_SSID
 
 led_pin = Pin("LED", Pin.OUT)
 
@@ -47,6 +45,9 @@ def send_button_press_event(button_id):
     #     data='{"stationKey":"LBTN", "stationName": "LifeButton", "observationType": "temperature", "observationValue": 42}'
     # )
     print(f'Send press event for button {button_id}')
+    led_pin.toggle()
+    utime.sleep_ms(200)
+    led_pin.toggle()
     # response.close()
 
 class Button:
@@ -81,8 +82,8 @@ def init_buttons():
         i += 1
 
 def main():
-    init_buttons()
     connect_wlan()
+    init_buttons()
     while True:
         pass
 
