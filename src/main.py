@@ -3,12 +3,15 @@ import time
 import utime
 import urequests
 import ujson
-from machine import Pin
+import ubinascii
+from machine import Pin, PWM
 
 from config import NETWORK_PASS, NETWORK_SSID
 from button import Button
 
 led_pin = Pin("LED", Pin.OUT)
+
+device_id = None
 
 # the pins to which the buttons are connected and the order
 # in which they should be assigned to the outgoing press
@@ -16,6 +19,8 @@ button_pins = [6, 7, 8, 9, 10, 11, 12, 13]
 buttons = []
 
 def connect_wlan():
+    global device_id
+
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     wlan.connect(NETWORK_SSID, NETWORK_PASS)
@@ -34,22 +39,37 @@ def connect_wlan():
         raise RuntimeError('Unable to connect to wireless network')
     else:
         ip_address = wlan.ifconfig()
+        device_id = ubinascii.hexlify(wlan.config('mac')).decode()
         print(f'Connected to network with IP: {ip_address[0]}')
+        print(f'Device ID: {device_id}')
+        register_device(device_id)
         led_pin.value(1)
+
+def register_device(device_id):
+    print('Registering device with service...')
+    response = urequests.post(
+        'https://api.babylog.net/device',
+        headers={
+            'Content-Type': 'application/json',
+        },
+        data=ujson.dumps({
+            'deviceId': device_id,
+        })
+    )
+    response.close()
+    print('Done!')
 
 def send_button_press_event(button_id):
     # TODO: send to LifeLog endpoint when that's up and running
     print(f'Send press event for button {button_id}')
     response = urequests.post(
-        'https://wx.hakkslab.io/observation',
+        'https://api.babylog.net/event',
         headers={
             'Content-Type': 'application/json',
         },
         data=ujson.dumps({
-            'stationKey': 'LBTN',
-            'stationName': 'LifeButton',
-            'observationType': 'temperature',
-            'observationValue': button_id,
+            'deviceId': device_id,
+            'buttonIndex': button_id,
         })
     )
     response.close()
