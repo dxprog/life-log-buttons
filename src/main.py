@@ -1,6 +1,6 @@
 import time
 import utime
-from machine import Pin, PWM
+from machine import Pin
 
 from config import NETWORK_PASS, NETWORK_SSID, API_PATH
 from button import Button
@@ -11,7 +11,14 @@ llsvc = None
 
 # the pins to which the buttons are connected and the order
 # in which they should be assigned to the outgoing press
-button_pins = [3, 7, 11, 15, 16, 20]
+button_pins = [
+    (3, 2),
+    (7, 6),
+    (11, 10),
+    (15, 14),
+    (16, 17),
+    (20, 21)
+]
 buttons = []
 
 def connect_wlan():
@@ -43,8 +50,13 @@ def init_buttons():
     global button_pins
 
     i = 0
-    for pin_id in button_pins:
-        buttons.append(Button(pin_id, i, irq_handler=handle_button_press))
+    for button_pin, led_pin in button_pins:
+        buttons.append(Button(
+            button_pin=button_pin,
+            led_pin=led_pin,
+            button_id=i,
+            irq_handler=handle_button_press
+        ))
         i += 1
 
 def init():
