@@ -55,7 +55,6 @@ def init_buttons():
             button_pin=button_pin,
             led_pin=led_pin,
             button_id=i,
-            irq_handler=handle_button_press
         ))
         i += 1
 

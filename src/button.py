@@ -22,7 +22,7 @@ PWM_FREQ = 5000
 MAX_DUTY_CYCLE = 65535
 
 class Button:
-    def __init__(self, button_pin=None, led_pin=None, button_id=None, irq_handler=noop_button_handler):
+    def __init__(self, button_pin=None, led_pin=None, button_id=None):
         if (
            button_pin is None or
            led_pin is None or
@@ -37,7 +37,6 @@ class Button:
 
         # button init
         self.button_pin = Pin(button_pin, Pin.IN, Pin.PULL_UP)
-        self.button_pin.irq(handler=irq_handler, trigger=Pin.IRQ_RISING)
         self.button_id = button_id
 
         # counters and state
@@ -47,32 +46,52 @@ class Button:
 
         print(f'Button {button_id} created on pin {button_pin} and led {led_pin}')
 
-    def handle_interrupt(self, pin):
-        if pin is self.button_pin and utime.ticks_ms() > self.debounce_time:
-            self.debounce_time = utime.ticks_ms() + DEBOUNCE_DELAY
-            self.state = BUTTON_STATE_PRESSED if self.state == BUTTON_STATE_IDLE else BUTTON_STATE_IDLE
-            self.led_pin.duty_u16(0 if self.state == BUTTON_STATE_IDLE else MAX_DUTY_CYCLE)
+
+    def check_button_press(self, ticks):
+        if self.button_pin.value() == 0 and ticks >= self.debounce_time:
+            print(f'[button-{self.button_id}:{self.state}: Button pressed: {ticks}-{self.debounce_time}')
+            self.debounce_time = ticks + DEBOUNCE_DELAY
             return True
         return False
+
+
+    def handle_idle_state(self, ticks):
+        self.wait_time = 0
+        if self.check_button_press(ticks):
+            self.state = BUTTON_STATE_PRESSED
+
+
+    def handle_pressed_state(self, ticks):
+        self.wait_time = ticks + WAIT_DELAY
+        self.state = BUTTON_STATE_WAITING
+
+
+    def handle_waiting_state(self, ticks):
+        led_fade = 0
+        if ticks > self.wait_time:
+            self.state = BUTTON_STATE_SEND
+        else:
+            if self.check_button_press(ticks):
+                self.state = BUTTON_STATE_IDLE
+            else:
+                led_fade = ((self.wait_time - ticks) / WAIT_DELAY) * MAX_DUTY_CYCLE
+
+        self.led_pin.duty_u16(int(led_fade))
+
 
     def handle_tick(self, ticks):
         # doing nothing, keep the house clean
         if self.state == BUTTON_STATE_IDLE:
-            self.debounce_time = 0
-            self.wait_time = 0
+            self.handle_idle_state(ticks)
+
         # button was pressed since the last loop, start the countdown
         elif self.state == BUTTON_STATE_PRESSED:
-            self.wait_time = ticks + WAIT_DELAY
-            self.state = BUTTON_STATE_WAITING
+            self.handle_pressed_state(ticks)
+
         # we're waiting for the user to cancel before sending the event
         elif self.state == BUTTON_STATE_WAITING:
-            if ticks > self.wait_time:
-                self.state = BUTTON_STATE_SEND
-                led_fade = 0
-            else:
-                led_fade = ((self.wait_time - ticks) / WAIT_DELAY) * MAX_DUTY_CYCLE
+            self.handle_waiting_state(ticks)
 
-            self.led_pin.duty_u16(int(led_fade))
 
     def should_send_event(self):
         if self.state == BUTTON_STATE_SEND:
