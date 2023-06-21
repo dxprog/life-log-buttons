@@ -33,7 +33,7 @@ class Button:
         # LED init
         self.led_pin = PWM(Pin(led_pin))
         self.led_pin.freq(PWM_FREQ)
-        self.led_pin.duty_u16(0)
+        self.led_pin.duty_u16(MAX_DUTY_CYCLE)
 
         # button init
         self.button_pin = Pin(button_pin, Pin.IN, Pin.PULL_UP)
@@ -74,7 +74,7 @@ class Button:
             if self.check_button_press(ticks):
                 self.state = BUTTON_STATE_IDLE
             else:
-                led_fade = ((self.wait_time - ticks) / WAIT_DELAY) * MAX_DUTY_CYCLE
+                led_fade = MAX_DUTY_CYCLE - (((self.wait_time - ticks) / WAIT_DELAY) * MAX_DUTY_CYCLE)
 
         self.led_pin.duty_u16(int(led_fade))
 
@@ -96,6 +96,6 @@ class Button:
     def should_send_event(self):
         if self.state == BUTTON_STATE_SEND:
             self.state = BUTTON_STATE_IDLE
-            self.led_pin.duty_u16(0)
+            self.led_pin.duty_u16(MAX_DUTY_CYCLE)
             return True
         return False
